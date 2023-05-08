@@ -13,10 +13,10 @@ def distance_p2p(x1, y1, a, b, c):
 current_dir = os.path.dirname(os.path.abspath(__file__))
 data_dir = os.path.join(current_dir, 'Data')
 sys.path.append(data_dir)
-from data5 import *
+from data7 import *
 from waypoint import *
 
-path = waypointPose4
+path = waypointPose3
 
 add_data = 0
 size_data = len(data)
@@ -123,7 +123,7 @@ plt.title("Q = diag(225, 225, 105), R = diag(1,1,1), Offset =  5")
 
 plt.xlabel("x-position")
 plt.ylabel("y-position")
-plt.axis([-20, 20, -20, 20])
+plt.axis([-25, 25, -25, 25])
 plt.grid()
 plt.show()
 

@@ -291,7 +291,7 @@ localSpeed = [0, 0, 0]
 globalSpeed = [0, 0, 0]
 target = [0, 0, 0]
 
-mode = 3
+mode = 5
 
 time_a = time.time()
 time_b = time.time()
@@ -312,7 +312,7 @@ while True:
             localSpeed = globalToLocal(globalSpeed, robotPose[2])
 
         elif(mode == 3): # Pure Pursuit PID
-            target = purePursuit(robotPose, waypointPose4, 0.5)
+            target = purePursuit(robotPose, waypointPose3, 0.5)
             globalSpeed = movePID(robotPose, target)
             localSpeed = globalToLocal(globalSpeed, robotPose[2])
 
@@ -320,7 +320,7 @@ while True:
             localSpeed = moveLQR(robotPose, waypointPose[0], dt)
 
         elif(mode == 5): # Pure Pursuit LQR
-            target = purePursuit(robotPose, waypointPose4, 0.5)
+            target = purePursuit(robotPose, waypointPose3, 0.5)
             localSpeed = moveLQR(robotPose, target, dt)
 
         wheelsPhi = inverseKinematics(localSpeed)
