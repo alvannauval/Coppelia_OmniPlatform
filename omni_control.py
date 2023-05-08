@@ -7,7 +7,8 @@ import sys
 import sim
 
 import numpy as np
-from scipy import linalg as la
+import matplotlib
+import scipy.linalg as la
 
 from waypoint import *
 
@@ -83,13 +84,20 @@ def inverseKinematics(local_speed):
 
     Phi = np.matmul(A, V)
 
-    # Limiting Speed
-    for i in range(4):
+    # # Speed Hard Limiter
+    # for i in range(4):
+    #     if(Phi[i] >= 15):
+    #         Phi[i] = 15
+    #     elif(Phi[i] <= -15):
+    #         Phi[i] = -15
 
-        if(Phi[i] >= 15):
-            Phi[i] = 15
-        elif(Phi[i] <= -15):
-            Phi[i] = -15
+    # Speed Normalizer
+    if(np.max(Phi) >= 20):
+        max_speed = np.max(Phi)
+        normalization_factor = 20 / max_speed
+        Phi = normalization_factor * Phi
+        # print(max_speed)
+        # print(normalization_factor)   
 
     # print("Phi0 = {} Phi1 = {} Phi2 = {} Phi3 = {}".format(Phi[0], Phi[1], Phi[2], Phi[3]))    
     return float(Phi[0]), float(Phi[1]), float(Phi[2]), float(Phi[3])
@@ -145,7 +153,7 @@ def movePID(robotPose, waypoint):
 
     proportional = [0, 0, 0]
     error = [0, 0, 0]
-    kp = [20, 20, 5] # 5 5 3
+    kp = [15, 15, 10] # P2P : 10 10 7 # Tracking 15 15 10
     ki = [0, 0, 0]
     kd = [0, 0, 0]
 
@@ -192,10 +200,10 @@ def moveLQR(robotPose, waypoint, dt):
     B = np.array([[-np.cos(robotPose[2])*dt,  np.sin(robotPose[2])*dt,    0],
                   [-np.sin(robotPose[2])*dt, -np.cos(robotPose[2])*dt,    0],
                   [                       0,                        0, 1*dt]]) # Input Control Matrix
-    Q = np.array([[50, 0, 0], # move 50 50 35 | track multiply by 5
-                  [0, 50, 0],
-                  [0, 0, 25]]) # State Variable Cost Matrix
-    Q = Q * 1
+    Q = np.array([[75, 0, 0], # P2P: 75 75 35 | Tracking 225 225 105
+                  [0, 75, 0],
+                  [0, 0, 75]]) # State Variable Cost Matrix
+    Q = Q * 3
     R = np.array([[1, 0, 0],
                   [0, 1, 0],
                   [0, 0, 1]]) # Input Control Cost Matrix
@@ -208,15 +216,13 @@ def moveLQR(robotPose, waypoint, dt):
     K = la.inv(R) @ B.T @ P # Solve LQR Gain
     u = -K @ E # Solve Input Control
 
-    print(u)
-
     u = list(u.flatten())
     u[2] *= -1
     localSpeed = u
 
     # print(P)
     # print(K)
-    print(u)
+    # print(u)
 
     return localSpeed
 
@@ -246,7 +252,7 @@ def purePursuit(robotPose, waypoints, offset):
     else:
         pass
     
-    print("wp = ", purePursuit.wp, "/", len(waypoints), "target = ", np.round(target,2), "count = ", purePursuit.count)
+    # print("wp = ", purePursuit.wp, "/", len(waypoints), "target = ", np.round(target,2), "count = ", purePursuit.count)
 
     return list(target)
 purePursuit.wp = 0
@@ -285,7 +291,7 @@ localSpeed = [0, 0, 0]
 globalSpeed = [0, 0, 0]
 target = [0, 0, 0]
 
-mode = 4
+mode = 3
 
 time_a = time.time()
 time_b = time.time()
@@ -306,7 +312,7 @@ while True:
             localSpeed = globalToLocal(globalSpeed, robotPose[2])
 
         elif(mode == 3): # Pure Pursuit PID
-            target = purePursuit(robotPose, waypointPose3, 1)
+            target = purePursuit(robotPose, waypointPose4, 0.5)
             globalSpeed = movePID(robotPose, target)
             localSpeed = globalToLocal(globalSpeed, robotPose[2])
 
@@ -314,7 +320,7 @@ while True:
             localSpeed = moveLQR(robotPose, waypointPose[0], dt)
 
         elif(mode == 5): # Pure Pursuit LQR
-            target = purePursuit(robotPose, waypointPose3, 1)
+            target = purePursuit(robotPose, waypointPose4, 0.5)
             localSpeed = moveLQR(robotPose, target, dt)
 
         wheelsPhi = inverseKinematics(localSpeed)
@@ -325,9 +331,12 @@ while True:
         waypointPose[0] = getObjectPose(client_id, waypointHandler[0])
         time_b = time.time()
 
-        print("Global Speed: {:.2f}, {:.2f}, {:.2f} | Wheels Phi: {:.2f}, {:.2f}, {:.2f}, {:.2f}".format(globalSpeed[0], globalSpeed[1], globalSpeed[2], wheelsPhi[0], wheelsPhi[1], wheelsPhi[2], wheelsPhi[3]))
-        print("Time = {} dt = {:.2e} | Robot Pose: {:.2f}, {:.2f}, {:.2f}\n".format(round(t_now,2), dt, robotPose[0], robotPose[1], robotPose[2]*(180/np.pi)))
+        # print("err_x = {} err_y = {} err_theta = {}".format(waypointPose[0][0] - robotPose[0], waypointPose[0][1] - robotPose[1], waypointPose[0][2] - robotPose[2]))
+        # print("Global Speed: {:.2f}, {:.2f}, {:.2f} | Wheels Phi: {:.2f}, {:.2f}, {:.2f}, {:.2f}".format(globalSpeed[0], globalSpeed[1], globalSpeed[2], wheelsPhi[0], wheelsPhi[1], wheelsPhi[2], wheelsPhi[3]))
+        # print("Time = {} dt = {:.2e} | Robot Pose: {:.2f}, {:.2f}, {:.2f}\n".format(round(t_now,2), dt, robotPose[0], robotPose[1], robotPose[2]*(180/np.pi)))
 
+        # Buat Ambil Data
+        print("[{:.4f},{:.4f},{:.4f}],".format(robotPose[0],robotPose[1],robotPose[2]))
     
 # --- End of Simulation ---
 sim.simxFinish(client_id)
