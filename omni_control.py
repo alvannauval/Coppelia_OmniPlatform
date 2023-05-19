@@ -212,8 +212,14 @@ def moveLQR(robotPose, waypoint, dt):
                   [error_y],
                   [error_theta]]) # Error Matrix
 
-    P = la.solve_discrete_are(A, B, Q, R) # Solve Ricatti Equation
-    K = la.inv(R) @ B.T @ P # Solve LQR Gain
+    # Method 1
+    # P = la.solve_discrete_are(A, B, Q, la.inv(R)) # Solve Ricatti Equation
+    # K = la.inv(R) @ B.T @ P # Solve LQR Gain
+
+    # Method 2
+    P = la.solve_discrete_are(A, B, Q, la.inv(R))
+    K = np.linalg.inv(B.T @ P @ B + R) @ (B.T @ P @ A)
+
     u = -K @ E # Solve Input Control
 
     u = list(u.flatten())
